@@ -1,0 +1,17 @@
+{
+  "name": "bce-text2audio-cli",
+  "version": "1.0.0",
+  "description": "Call baidu cloud apis to convert text to audio",
+  "main": "main.js",
+  "dependencies": {
+    "baidu-aip-sdk": "^2.0.3",
+    "get-stdin": "^5.0.1",
+    "yargs": "^10.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "Kyle",
+  "license": "SATA"
+}
