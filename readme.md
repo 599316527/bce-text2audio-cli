@@ -10,6 +10,8 @@ BCE Text2Audio Cli
 支持参数：
 
 * `--concurrency=2` 接口并发请求个数
+* `--input-file` 指定文本文件。或者从标准流输入
+* `--clean [--dryrun]` 删除临时文件
 
 命令还支持语音合成接口的几个参数：
 

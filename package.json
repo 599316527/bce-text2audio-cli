@@ -14,5 +14,12 @@
     "test": "mocha"
   },
   "author": "Kyle",
-  "license": "SATA"
+  "license": "SATA",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/599316527/bce-text2audio-cli.git"
+  },
+  "bin": {
+    "bce-text2audio-cli": "./main.js"
+  }
 }
