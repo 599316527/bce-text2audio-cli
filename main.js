@@ -3,36 +3,48 @@
 const AipSpeechClient = require("baidu-aip-sdk").speech
 const getStdin = require('get-stdin')
 const fs = require('fs')
-const argv = require('yargs').argv
+const yargs = require('yargs')
 const pLimit = require('p-limit')
 const path = require('path')
 
 const configFilename = '.bce-text2audio-cli-config.json'
 const tmpFilePrefix = '/tmp/text2audio_'
 const appConfKeys = ['APP_ID', 'API_KEY', 'SECRET_KEY']
+const voiceConfKeys = ['spd', 'per', 'vol', 'pit']
 
-const defaultText2AudioApiOptions = {
-    spd: 5,
-    per: 0,
-    vol: 5,
-    pit: 5
-}
+yargs.usage('Usage: $0 < article.txt').option('inputFile', {
+    alias: 'i',
+    describe: '文本文件'
+}).option('concurrency', {
+    alias: 'c',
+    default: 2,
+    describe: '请求并发数'
+}).option('clean', {
+    describe: '删除临时文件'
+}).option('dryrun', {
+    describe: '假装执行命令'
+}).option('spd', {
+    default: 5,
+    describe: '语速，取值0-9'
+}).option('pit', {
+    default: 5,
+    describe: '音调，取值0-9'
+}).option('vol', {
+    default: 5,
+    describe: '音量，取值0-15'
+}).option('per', {
+    default: 0,
+    describe: '发音人选择, 0为女声，1为男声，3为情感合成-度逍遥，4为情感合成-度丫丫'
+}).help()
 
-const text2AudioApiOptions = Object.assign({}, defaultText2AudioApiOptions,
-    Object.keys(defaultText2AudioApiOptions).reduce(function (prev, key) {
-        if (argv[key] !== undefined) {
-            prev[key] = argv[key]
-        }
-        return prev
-    }, {}))
+const argv = yargs.argv
 
-let concurrency = 2
-if (argv.concurrency) {
-    let c = parseInt(argv.concurrency, 10)
-    if (!isNaN(c) && c > 0) {
-        concurrency = c
+const text2AudioApiOptions =  voiceConfKeys.reduce(function (prev, key) {
+    if (argv[key] !== undefined) {
+        prev[key] = argv[key]
     }
-}
+    return prev
+}, {})
 
 if (argv.clean) {
     clean(argv.dryrun).catch(handleError)
@@ -68,7 +80,7 @@ async function convert() {
 
     let client = new AipSpeechClient(...appConfKeys.map(key => config[key]))
 
-    let limit = pLimit(concurrency)
+    let limit = pLimit(argv.concurrency)
     let files = await Promise.all(splitText(text).map(function (text, index, files) {
         return limit(function () {
             console.log('Snippet (%d/%d): %s...',
@@ -83,7 +95,9 @@ async function convert() {
     }
 
     let ffmpegConcatInputFilename = `${tmpFilePrefix}list_${randomName()}.txt`
-    await writeFile(ffmpegConcatInputFilename, files.map(file => `file '${file}'`).join('\n'))
+    if (!argv.dryrun) {
+        await writeFile(ffmpegConcatInputFilename, files.map(file => `file '${file}'`).join('\n'))
+    }
 
     let cmdline = `ffmpeg -f concat -safe 0 -i ${ffmpegConcatInputFilename} -c copy ${Date.now()}.mp3`
     printBox(cmdline)
@@ -102,6 +116,11 @@ function splitText(text, limit = 444) {
 }
 
 function makeMp3(client, text) {
+    let filename = randomName()
+    filename = `${tmpFilePrefix}${filename}.mp3`
+    if (argv.dryrun) {
+        return Promise.resolve(filename)
+    }
     return new Promise(function (resolve, reject) {
         client.text2audio(text, text2AudioApiOptions).then(function(result) {
             if (result.data) {
@@ -114,8 +133,6 @@ function makeMp3(client, text) {
             reject(err)
         })
     }).then(function (result) {
-        let filename = randomName()
-        filename = `${tmpFilePrefix}${filename}.mp3`
         return writeFile(filename, result.data)
     })
 }
